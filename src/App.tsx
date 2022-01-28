@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
+import { Outlet, Route, Routes } from 'react-router-dom';
 import StyledFirebaseAuth from 'react-firebaseui/StyledFirebaseAuth';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
+import Login from './components/Login';
+import Logout from './components/Logout';
+import { AppBar, Box, Button, Paper, Popover, Toolbar, Typography } from '@mui/material';
 
 function App() {
-  useEffect(() => {
-    fetch('/api/v1').then((response) => console.log(response));
-  }, []);
-
   const config = {
     apiKey: process.env.REACT_APP_KEY,
     authDomain: process.env.REACT_APP_DOMAIN,
@@ -17,14 +17,25 @@ function App() {
 
   // Configure FirebaseUI.
   const uiConfig = {
-    // Popup signin flow rather than redirect flow.
     signInFlow: 'popup',
-    // Redirect to /signedIn after sign in is successful. Alternatively you can provide a callbacks.signInSuccess function.
-    signInSuccessUrl: '/signedIn',
+    signInSuccessUrl: '/home',
     signInOptions: [firebase.auth.EmailAuthProvider.PROVIDER_ID],
   };
 
-  const [isSignedIn, setIsSignedIn] = useState(false); // Local signed-in state.
+  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
+
+  const openPopover = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchor(event.currentTarget);
+  };
+
+  const closePopover = () => {
+    setAnchor(null);
+  };
+
+  const logout = () => {
+    firebase.auth().signOut();
+  };
 
   // Listen to the Firebase Auth state and set the local state.
   useEffect(() => {
@@ -35,7 +46,6 @@ function App() {
   }, []);
 
   const user = firebase.auth().currentUser;
-  user?.getIdToken().then((token) => console.log(token));
 
   const createToken = async () => {
     const user = firebase.auth().currentUser;
@@ -55,21 +65,56 @@ function App() {
     });
   });
 
-  if (!isSignedIn) {
-    return (
-      <div className="App">
-        <div id="firebaseui-auth-container" />
-        <StyledFirebaseAuth uiConfig={uiConfig} firebaseAuth={firebase.auth()} />
-      </div>
-    );
-  }
   return (
-    <div>
-      <h1>My App</h1>
-      <p>Welcome {JSON.stringify(firebase.auth().currentUser)}! You are now signed-in!</p>
-      <a onClick={() => firebase.auth().signOut()}>Sign-out</a>
-    </div>
+    <Box>
+      <AppBar>
+        <Toolbar>
+          <Typography sx={{ flexGrow: 1 }} variant="h6">
+            Leslie Quotes
+          </Typography>
+          <Button onClick={!isSignedIn ? openPopover : logout} variant="text" color="inherit">
+            {!isSignedIn ? 'Login' : `Hi, ${user?.displayName?.split(' ')[0]}! (sign out)`}
+          </Button>
+          <Popover
+            open={Boolean(anchor) && !isSignedIn}
+            anchorEl={anchor}
+            onClose={closePopover}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'right',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+          >
+            <Box sx={{ minWidth: 360, minHeight: 215 }}>
+              <StyledFirebaseAuth uiConfig={uiConfig} firebaseAuth={firebase.auth()} />
+            </Box>
+          </Popover>
+        </Toolbar>
+      </AppBar>
+      <Outlet />
+    </Box>
   );
+
+  // if (!isSignedIn) {
+  //   return (
+  //     <div className="App">
+  //       <div id="firebaseui-auth-container" />
+  //       <StyledFirebaseAuth uiConfig={uiConfig} firebaseAuth={firebase.auth()} />
+  //       <Outlet />
+  //     </div>
+  //   );
+  // }
+  // return (
+  //   <div>
+  //     <h1>My App</h1>
+  //     <p>Welcome {firebase.auth().currentUser?.displayName}! You are now signed-in!</p>
+  //     <a onClick={() => firebase.auth().signOut()}>Sign-out</a>
+  //     <Outlet />
+  //   </div>
+  // );
 }
 
 export default App;
